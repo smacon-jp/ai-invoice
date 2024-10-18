@@ -271,14 +271,36 @@ class ClientContact extends Authenticatable implements HasLocalePreference
 
     public function preferredLocale()
     {
-        
+        // Ensure the client object exists
+        if (!$this->client) {
+            Log::error('Client is null for ClientContact ID: ' . $this->id);
+            return 'default_locale'; // Provide a fallback locale if client is null
+        }
+
+        // Get the client's language setting
+        $languageId = $this->client->getSetting('language_id');
+        if (!$languageId) {
+            Log::error('No language_id found for ClientContact ID: ' . $this->id);
+            return 'default_locale'; // Provide a fallback locale if no language ID is set
+        }
+
         /** @var \Illuminate\Support\Collection<\App\Models\Language> */
         $languages = app('languages');
 
-        return $languages->first(function ($item) {
-            return $item->id == $this->client->getSetting('language_id');
-        })->locale;
+        // Find the matching language by ID
+        $language = $languages->first(function ($item) use ($languageId) {
+            return $item->id == $languageId;
+        });
+
+        // Ensure the language exists before accessing its properties
+        if ($language) {
+            return $language->locale;
+        } else {
+            Log::error('Language not found for ClientContact ID: ' . $this->id . ', Language ID: ' . $languageId);
+            return 'default_locale'; // Provide a fallback locale if no matching language is found
+        }
     }
+
 
     public function routeNotificationForMail($notification)
     {
